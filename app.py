@@ -8,8 +8,8 @@ app.secret_key = "secret123"
 
 FILE = "data/airdrops.json"
 
-USER = "admin"
-PASS = "admin"
+USER = "alwantra"
+PASS = "alwantra"
 
 # ================= LOGIN =================
 def is_login():
@@ -58,6 +58,22 @@ def home():
 
     data = load()
 
+    # ================= SEARCH =================
+    keyword = request.args.get("q", "").lower()
+
+    if keyword:
+        data = [
+            a for a in data
+            if keyword in a["name"].lower()
+            or keyword in a["type"].lower()
+            or keyword in a["network"].lower()
+            or keyword in a["chain"].lower()
+            or keyword in a["wallet"].lower()
+            or keyword in a["status"].lower()
+            or keyword in a["note"].lower()
+        ]
+
+    # ================= STATS =================
     total = len(data)
     done = sum(1 for a in data if a["status"] == "done")
     total_usd = 0
@@ -73,12 +89,13 @@ def home():
     body{background:#0d1117;color:#0f0;font-family:monospace}
     .container{width:90%;margin:auto}
     .card{border:1px solid #0f0;padding:15px;margin:10px;background:#111;border-radius:10px}
-    .top{display:flex;justify-content:space-between}
+    .top{display:flex;justify-content:space-between;align-items:center}
     .btn{padding:5px 10px;border:1px solid #0f0;margin:5px;display:inline-block}
     .btn:hover{background:#0f0;color:#000}
     .stats{display:flex;gap:20px;margin:20px}
     .box{border:1px solid #0f0;padding:10px;border-radius:10px}
     a{color:#0ff;text-decoration:none}
+    input{padding:6px;background:#111;color:#0f0;border:1px solid #0f0}
     </style>
 
     <h1>🚀 AIRDROP DASHBOARD ALWANTRA</h1>
@@ -89,9 +106,19 @@ def home():
         <div>
         <a href='/'>All</a>
         </div>
-        <div>
-        <a href='/add'>➕ Add</a> |
-        <a href='/logout'>Logout</a>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+
+            <!-- SEARCH -->
+            <form method="get" action="/">
+                <input type="text" name="q" placeholder="search..."
+                       value="{{request.args.get('q','')}}">
+            </form>
+
+            <!-- MENU -->
+            <a href='/add'>➕ Add</a> |
+            <a href='/logout'>Logout</a>
+
         </div>
     </div>
 
@@ -125,7 +152,8 @@ def home():
         data=list(enumerate(data)),
         total=total,
         done=done,
-        usd=round(total_usd,2)
+        usd=round(total_usd,2),
+        request=request
     )
 
 # ================= ADD =================
@@ -240,7 +268,42 @@ def delete(i):
         save(data)
     return redirect("/")
 
-# ================= START =================
+# ================= EDIT NAMA =================
+@app.route("/edit/<int:i>", methods=["GET","POST"])
+def edit(i):
+    data = load()
+
+    if i >= len(data):
+        return redirect("/")
+
+    # kalau klik save
+    if request.method == "POST":
+        data[i]["name"] = request.form["name"]
+        save(data)
+        return redirect("/")
+
+    # tampil form edit
+    a = data[i]
+
+    return f"""
+    <style>
+    body{{background:#0d1117;color:#0f0;font-family:monospace;text-align:center}}
+    input,button{{padding:10px;margin:5px;background:#111;color:#0f0;border:1px solid #0f0}}
+    </style>
+
+    <h2>Edit Nama Airdrop</h2>
+
+    <form method="post">
+        <input name="name" value="{a['name']}" required>
+        <br>
+        <button>Simpan</button>
+    </form>
+
+    <br>
+    <a href="/">Kembali</a>
+    """
+    
+# ================= RUN =================
 if __name__ == "__main__":
     if not os.path.exists("data"):
         os.mkdir("data")
@@ -248,4 +311,7 @@ if __name__ == "__main__":
     if not os.path.exists(FILE):
         save([])
 
-    app.run(host="0.0.0.0", port=5001)
+    import os
+    port = int(os.environ.get("PORT", 5001))
+
+    app.run(host="0.0.0.0", port=port)
